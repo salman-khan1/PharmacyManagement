@@ -25,7 +25,12 @@ public class ExportService : IExportService
             }
 
             var properties = typeof(T).GetProperties()
-                .Where(p => p.CanRead && !p.PropertyType.IsClass)
+                .Where(p => p.CanRead && (
+                    p.PropertyType.IsPrimitive ||
+                    p.PropertyType.IsValueType ||
+                    p.PropertyType == typeof(string) ||
+                    (Nullable.GetUnderlyingType(p.PropertyType)?.IsValueType ?? false)
+                ))
                 .ToArray();
 
             // Headers
@@ -69,7 +74,12 @@ public class ExportService : IExportService
             }
 
             var properties = typeof(T).GetProperties()
-                .Where(p => p.CanRead && !p.PropertyType.IsClass)
+                .Where(p => p.CanRead && (
+                    p.PropertyType.IsPrimitive ||
+                    p.PropertyType.IsValueType ||
+                    p.PropertyType == typeof(string) ||
+                    (Nullable.GetUnderlyingType(p.PropertyType)?.IsValueType ?? false)
+                ))
                 .ToArray();
 
             // Headers
@@ -117,7 +127,12 @@ public class ExportService : IExportService
             }
 
             var properties = typeof(T).GetProperties()
-                .Where(p => p.CanRead && !p.PropertyType.IsClass)
+                .Where(p => p.CanRead && (
+                    p.PropertyType.IsPrimitive ||
+                    p.PropertyType.IsValueType ||
+                    p.PropertyType == typeof(string) ||
+                    (Nullable.GetUnderlyingType(p.PropertyType)?.IsValueType ?? false)
+                ))
                 .ToArray();
 
             // Build header

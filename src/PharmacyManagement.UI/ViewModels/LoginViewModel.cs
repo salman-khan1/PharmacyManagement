@@ -4,7 +4,9 @@ using PharmacyManagement.Domain.Models;
 using PharmacyManagement.Infrastructure.Logging;
 using PharmacyManagement.Infrastructure.Services;
 using PharmacyManagement.UI.Views;
+using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace PharmacyManagement.UI.ViewModels;
 

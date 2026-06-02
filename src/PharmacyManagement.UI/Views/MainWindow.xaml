@@ -9,9 +9,7 @@
         Background="{DynamicResource WindowBackgroundBrush}"
         FontFamily="Segoe UI">
 
-    <Window.DataContext>
-        <vm:MainViewModel/>
-    </Window.DataContext>
+    <!-- DataContext is provided by DI in code-behind -->
 
     <Grid>
         <Grid.ColumnDefinitions>

@@ -1,6 +1,8 @@
 using PharmacyManagement.UI.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace PharmacyManagement.UI.Views;
 

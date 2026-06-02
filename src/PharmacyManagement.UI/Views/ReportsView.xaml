@@ -2,6 +2,10 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid>
             <Grid.RowDefinitions>
@@ -31,181 +35,156 @@
                        Command="{Binding GenerateProfitReportCommand}" Height="45" Margin="0,0,0,10"/>
             </UniformGrid>
 
-            <!-- Sales Report -->
-            <Border Grid.Row="2" Background="{DynamicResource CardBackgroundBrush}" 
-                   BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" 
-                   CornerRadius="8" Padding="20" Margin="0,0,0,15"
-                   Visibility="{Binding SalesReport, Converter={StaticResource NullToVisibilityConverter}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+            <!-- Controls for reports -->
+            <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,0,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,10">
+                    <TextBlock Text="From:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                    <DatePicker SelectedDate="{Binding StartDate}" Width="140"/>
+                    <TextBlock Text="To:" VerticalAlignment="Center" Margin="10,0,5,0" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                    <DatePicker SelectedDate="{Binding EndDate}" Width="140"/>
+                    <Button Content="Load Invoices" Command="{Binding LoadRecentInvoicesCommand}" Style="{DynamicResource PrimaryButtonStyle}" Height="30" Margin="10,0"/>
+                    <Button Content="Generate Profit" Command="{Binding GenerateProfitReportCommand}" Style="{DynamicResource PrimaryButtonStyle}" Height="30" Margin="10,0"/>
+                </StackPanel>
 
-                    <TextBlock Grid.Row="0" Text="Sales Report" FontSize="18" FontWeight="SemiBold" 
-                              Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,15"/>
-
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                            <TextBlock Text="Total Invoices" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding SalesReport.TotalInvoices}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource PrimaryBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                            <TextBlock Text="Total Sales" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding SalesReport.TotalSales, StringFormat=C}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource SuccessBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="2" Margin="0,0,15,0">
-                            <TextBlock Text="Total Tax" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding SalesReport.TotalTax, StringFormat:C}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource AccentBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="3">
-                            <TextBlock Text="Total Discount" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding SalesReport.TotalDiscount, StringFormat:C}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource WarningBrush}"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Export Buttons -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,15,0,0">
-                        <Button Content="Export Excel" Style="{DynamicResource SmallSuccessButtonStyle}" 
-                               Command="{Binding ExportToExcelCommand}" Height="30" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="Export CSV" Style="{DynamicResource SmallPrimaryButtonStyle}" 
-                               Command="{Binding ExportToCsvCommand}" Height="30" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="Export PDF" Style="{DynamicResource SmallDangerButtonStyle}" 
-                               Command="{Binding ExportToPdfCommand}" Height="30" Width="100"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- Inventory Report -->
-            <Border Grid.Row="2" Background="{DynamicResource CardBackgroundBrush}" 
-                   BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" 
-                   CornerRadius="8" Padding="20" Margin="0,0,0,15"
-                   Visibility="{Binding InventoryReport, Converter={StaticResource NullToVisibilityConverter}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Text="Inventory Report" FontSize="18" FontWeight="SemiBold" 
-                              Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,15"/>
-
-                    <UniformGrid Grid.Row="1" Columns="4">
-                        <StackPanel Margin="0,0,15,0">
-                            <TextBlock Text="Total Medicines" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding InventoryReport.TotalMedicines}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource PrimaryBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,15,0">
-                            <TextBlock Text="Total Value" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding InventoryReport.TotalInventoryValue, StringFormat:C}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource SuccessBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,15,0">
-                            <TextBlock Text="Low Stock" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding InventoryReport.LowStockCount}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource WarningBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel>
-                            <TextBlock Text="Expiring Soon" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding InventoryReport.ExpiringSoonCount}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource ErrorBrush}"/>
-                        </StackPanel>
-                    </UniformGrid>
-                </Grid>
-            </Border>
-
-            <!-- Profit Report -->
-            <Border Grid.Row="2" Background="{DynamicResource CardBackgroundBrush}" 
-                   BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" 
-                   CornerRadius="8" Padding="20" Margin="0,0,0,15"
-                   Visibility="{Binding ProfitReport, Converter={StaticResource NullToVisibilityConverter}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Text="Profit Report" FontSize="18" FontWeight="SemiBold" 
-                              Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,15"/>
-
-                    <UniformGrid Grid.Row="1" Columns="4">
-                        <StackPanel Margin="0,0,15,0">
-                            <TextBlock Text="Revenue" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding ProfitReport.TotalRevenue, StringFormat=C}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource SuccessBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,15,0">
-                            <TextBlock Text="Cost" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding ProfitReport.TotalCost, StringFormat:C}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource ErrorBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,15,0">
-                            <TextBlock Text="Gross Profit" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding ProfitReport.GrossProfit, StringFormat=C}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource PrimaryBrush}"/>
-                        </StackPanel>
-
-                        <StackPanel>
-                            <TextBlock Text="Margin %" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
-                            <TextBlock Text="{Binding ProfitReport.ProfitMargin, StringFormat=F1}" FontSize="20" FontWeight="Bold" 
-                                      Foreground="{DynamicResource AccentBrush}"/>
-                        </StackPanel>
-                    </UniformGrid>
-                </Grid>
-            </Border>
-
-            <!-- Expiry Report -->
-            <Border Grid.Row="2" Background="{DynamicResource CardBackgroundBrush}" 
-                   BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" 
-                   CornerRadius="8" Padding="20" Margin="0,0,0,15"
-                   Visibility="{Binding ExpiryReport, Converter={StaticResource NullToVisibilityConverter}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Text="Expiry Report" FontSize="18" FontWeight="SemiBold" 
-                              Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,15"/>
-
-                    <StackPanel Grid.Row="1" Orientation="Horizontal">
-                        <Border Background="{DynamicResource ErrorBrush}" CornerRadius="4" Padding="15,8" Margin="0,0,15,0">
+                <!-- Sales Report -->
+                <Border Background="{DynamicResource CardBackgroundBrush}" 
+                       BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" 
+                       CornerRadius="8" Padding="20" Margin="0,0,0,15"
+                       Visibility="{Binding HasSalesReport, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Sales Report" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="4" Margin="0,0,0,8">
                             <StackPanel>
-                                <TextBlock Text="Expired" Foreground="White" FontSize="12"/>
-                                <TextBlock Text="{Binding ExpiryReport.ExpiredCount}" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                                <TextBlock Text="Total Invoices" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding SalesReport.TotalInvoices}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             </StackPanel>
-                        </Border>
-
-                        <Border Background="{DynamicResource WarningBrush}" CornerRadius="4" Padding="15,8">
                             <StackPanel>
-                                <TextBlock Text="Expiring Soon" Foreground="White" FontSize="12"/>
-                                <TextBlock Text="{Binding ExpiryReport.ExpiringSoonCount}" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                                <TextBlock Text="Total Sales" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding SalesReport.TotalSales, StringFormat='{}{0:C}'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
                             </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Total Tax" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding SalesReport.TotalTax, StringFormat='{}{0:C}'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Total Discount" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding SalesReport.TotalDiscount, StringFormat='{}{0:C}'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Orientation="Horizontal" Grid.Column="0">
+                                <Button Content="Export Excel" Style="{DynamicResource SmallSuccessButtonStyle}" Command="{Binding ExportToExcelCommand}" Height="30" Width="120" Margin="0,0,8,0"/>
+                                <Button Content="Export CSV" Style="{DynamicResource SmallPrimaryButtonStyle}" Command="{Binding ExportToCsvCommand}" Height="30" Width="120" Margin="0,0,8,0"/>
+                                <Button Content="Export PDF" Style="{DynamicResource SmallDangerButtonStyle}" Command="{Binding ExportToPdfCommand}" Height="30" Width="120"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock Text="Top Selling Items:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <ComboBox Width="300" ItemsSource="{Binding SalesReport.TopSellingItems}" DisplayMemberPath="MedicineName"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Recent invoices table -->
+                        <Border Margin="0,12,0,0" Background="Transparent">
+                            <DataGrid ItemsSource="{Binding RecentInvoices}" AutoGenerateColumns="False" CanUserAddRows="False" Height="220">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Invoice#" Binding="{Binding InvoiceNumber}" Width="180"/>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding CreatedAt, StringFormat=yyyy-MM-dd}" Width="120"/>
+                                    <DataGridTextColumn Header="Customer" Binding="{Binding CustomerName}" Width="*"/>
+                                    <DataGridTextColumn Header="Total" Binding="{Binding TotalAmount, StringFormat='{}{0:C}'}" Width="120"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </Border>
                     </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
+
+                <!-- Inventory Report -->
+                <Border Background="{DynamicResource CardBackgroundBrush}" 
+                       BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" 
+                       CornerRadius="8" Padding="20" Margin="0,0,0,15"
+                       Visibility="{Binding HasInventoryReport, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Inventory Report" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="4">
+                            <StackPanel>
+                                <TextBlock Text="Total Medicines" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding InventoryReport.TotalMedicines}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Total Value" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding InventoryReport.TotalInventoryValue, StringFormat='{}{0:C}'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Low Stock" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding InventoryReport.LowStockCount}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Expiring Soon" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding InventoryReport.ExpiringSoonCount}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource ErrorBrush}"/>
+                            </StackPanel>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Profit Report -->
+                <Border Background="{DynamicResource CardBackgroundBrush}" 
+                       BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" 
+                       CornerRadius="8" Padding="20" Margin="0,0,0,15"
+                       Visibility="{Binding HasProfitReport, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Profit Report" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="4">
+                            <StackPanel>
+                                <TextBlock Text="Revenue" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding ProfitReport.TotalRevenue, StringFormat='{}{0:C}'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Cost" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding ProfitReport.TotalCost, StringFormat='{}{0:C}'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource ErrorBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Gross Profit" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding ProfitReport.GrossProfit, StringFormat='{}{0:C}'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Margin %" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                                <TextBlock Text="{Binding ProfitReport.ProfitMargin, StringFormat='{}{0:F1}'}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                            </StackPanel>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Expiry Report -->
+                <Border Background="{DynamicResource CardBackgroundBrush}" 
+                       BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" 
+                       CornerRadius="8" Padding="20" Margin="0,0,0,15"
+                       Visibility="{Binding HasExpiryReport, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Expiry Report" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,10"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Background="{DynamicResource ErrorBrush}" CornerRadius="4" Padding="15,8" Margin="0,0,15,0">
+                                <StackPanel>
+                                    <TextBlock Text="Expired" Foreground="White" FontSize="12"/>
+                                    <TextBlock Text="{Binding ExpiryReport.ExpiredCount}" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{DynamicResource WarningBrush}" CornerRadius="4" Padding="15,8">
+                                <StackPanel>
+                                    <TextBlock Text="Expiring Soon" Foreground="White" FontSize="12"/>
+                                    <TextBlock Text="{Binding ExpiryReport.ExpiringSoonCount}" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
         </Grid>
     </ScrollViewer>
 </UserControl>

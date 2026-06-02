@@ -8,6 +8,7 @@ using PharmacyManagement.Infrastructure.Services;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 
 namespace PharmacyManagement.UI.ViewModels;
 
@@ -26,11 +27,19 @@ public partial class ReportsViewModel : BaseViewModel
     [ObservableProperty]
     private SalesReport? _salesReport;
 
+    private bool _hasSalesReport;
+
     [ObservableProperty]
     private InventoryReport? _inventoryReport;
 
+    private bool _hasInventoryReport;
+
     [ObservableProperty]
     private ExpiryReport? _expiryReport;
+
+    private bool _hasExpiryReport;
+
+    private bool _hasProfitReport;
 
     [ObservableProperty]
     private SupplierReport? _supplierReport;
@@ -43,6 +52,31 @@ public partial class ReportsViewModel : BaseViewModel
 
     [ObservableProperty]
     private int _selectedReportIndex;
+
+    // Flags for UI visibility
+    public bool HasSalesReport
+    {
+        get => _hasSalesReport;
+        set => SetProperty(ref _hasSalesReport, value);
+    }
+
+    public bool HasInventoryReport
+    {
+        get => _hasInventoryReport;
+        set => SetProperty(ref _hasInventoryReport, value);
+    }
+
+    public bool HasExpiryReport
+    {
+        get => _hasExpiryReport;
+        set => SetProperty(ref _hasExpiryReport, value);
+    }
+
+    public bool HasProfitReport
+    {
+        get => _hasProfitReport;
+        set => SetProperty(ref _hasProfitReport, value);
+    }
 
     public ReportsViewModel(IUnitOfWork unitOfWork, IReportService reportService, IExportService exportService)
     {
@@ -58,7 +92,11 @@ public partial class ReportsViewModel : BaseViewModel
         try
         {
             IsBusy = true;
-            SalesReport = await _reportService.GetDailySalesReportAsync(DateTime.UtcNow);
+            // Generate sales report for the selected single day (StartDate)
+            var start = StartDate.Date;
+            var end = start.AddDays(1).AddTicks(-1);
+            await GenerateSalesRangeReportAsync(start, end);
+            HasSalesReport = SalesReport != null && SalesReport.TotalInvoices > 0;
         }
         catch (Exception ex)
         {
@@ -76,7 +114,11 @@ public partial class ReportsViewModel : BaseViewModel
         try
         {
             IsBusy = true;
-            SalesReport = await _reportService.GetMonthlySalesReportAsync(DateTime.UtcNow.Year, DateTime.UtcNow.Month);
+            // Use the selected StartDate/EndDate range for monthly-like report
+            var start = StartDate.Date;
+            var end = EndDate.Date.AddDays(1).AddTicks(-1);
+            await GenerateSalesRangeReportAsync(start, end);
+            HasSalesReport = SalesReport != null && SalesReport.TotalInvoices > 0;
         }
         catch (Exception ex)
         {
@@ -88,6 +130,43 @@ public partial class ReportsViewModel : BaseViewModel
         }
     }
 
+    private async Task GenerateSalesRangeReportAsync(DateTime start, DateTime end)
+    {
+        // Build a SalesReport from invoice data in range
+        var invoices = (await _unitOfWork.Invoices.GetByDateRangeAsync(start, end)).Where(i => i.Status == InvoiceStatus.Paid).ToList();
+
+        var report = new SalesReport
+        {
+            ReportDate = start,
+            TotalInvoices = invoices.Count,
+            TotalSales = invoices.Sum(i => i.TotalAmount),
+            TotalTax = invoices.Sum(i => i.TaxAmount),
+            TotalDiscount = invoices.Sum(i => i.DiscountAmount)
+        };
+
+        report.PaymentSummaries = invoices.GroupBy(i => i.PaymentMethod)
+            .Select(g => new PaymentMethodSummary
+            {
+                Method = g.Key,
+                Count = g.Count(),
+                Total = g.Sum(i => i.TotalAmount)
+            }).ToList();
+
+        report.TopSellingItems = invoices.SelectMany(i => i.Items)
+            .GroupBy(it => it.MedicineName)
+            .Select(g => new TopSellingItem
+            {
+                MedicineName = g.Key,
+                QuantitySold = g.Sum(i => i.Quantity),
+                TotalRevenue = g.Sum(i => i.TotalPrice)
+            })
+            .OrderByDescending(t => t.QuantitySold)
+            .Take(10)
+            .ToList();
+
+        SalesReport = report;
+    }
+
     [RelayCommand]
     private async Task GenerateInventoryReportAsync()
     {
@@ -95,6 +174,7 @@ public partial class ReportsViewModel : BaseViewModel
         {
             IsBusy = true;
             InventoryReport = await _reportService.GetInventoryReportAsync();
+            HasInventoryReport = InventoryReport != null && InventoryReport.TotalMedicines > 0;
         }
         catch (Exception ex)
         {
@@ -168,6 +248,23 @@ public partial class ReportsViewModel : BaseViewModel
             IsBusy = true;
             var invoices = await _unitOfWork.Invoices.GetByDateRangeAsync(StartDate, EndDate);
             RecentInvoices = new ObservableCollection<Invoice>(invoices);
+            // update SalesReport preview values when invoices loaded
+            if (invoices != null && invoices.Any())
+            {
+                SalesReport = new SalesReport
+                {
+                    ReportDate = StartDate,
+                    TotalInvoices = invoices.Count(),
+                    TotalSales = invoices.Sum(i => i.TotalAmount),
+                    TotalTax = invoices.Sum(i => i.TaxAmount),
+                    TotalDiscount = invoices.Sum(i => i.DiscountAmount),
+                    TopSellingItems = invoices.SelectMany(i => i.Items)
+                        .GroupBy(it => it.MedicineName)
+                        .Select(g => new TopSellingItem { MedicineName = g.Key, QuantitySold = g.Sum(i => i.Quantity), TotalRevenue = g.Sum(i => i.TotalPrice) })
+                        .OrderByDescending(t => t.QuantitySold).Take(10).ToList()
+                };
+                HasSalesReport = true;
+            }
         }
         catch (Exception ex)
         {
@@ -182,19 +279,19 @@ public partial class ReportsViewModel : BaseViewModel
     [RelayCommand]
     private async Task ExportToExcelAsync()
     {
-        await ExportAsync("Excel", "xlsx", async data => await _exportService.ExportToExcelAsync(data, "Report"));
+        await ExportAsync<Invoice>("Excel", "xlsx", async data => await _exportService.ExportToExcelAsync(data, "Report"));
     }
 
     [RelayCommand]
     private async Task ExportToCsvAsync()
     {
-        await ExportAsync("CSV", "csv", async data => await _exportService.ExportToCsvAsync(data));
+        await ExportAsync<Invoice>("CSV", "csv", async data => await _exportService.ExportToCsvAsync(data));
     }
 
     [RelayCommand]
     private async Task ExportToPdfAsync()
     {
-        await ExportAsync("PDF", "pdf", async data => await _exportService.ExportToPdfAsync(data, "Report"));
+        await ExportAsync<Invoice>("PDF", "pdf", async data => await _exportService.ExportToPdfAsync(data, "Report"));
     }
 
     private async Task ExportAsync<T>(string filterName, string extension, Func<List<T>, Task<byte[]>> exportFunc) where T : class
@@ -211,7 +308,7 @@ public partial class ReportsViewModel : BaseViewModel
 
             if (saveDialog.ShowDialog() != true) return;
 
-            List<T> data = GetReportData<T>();
+            List<T>? data = await GetReportDataAsync<T>();
             if (data == null || data.Count == 0)
             {
                 ShowError("No data to export.");
@@ -242,5 +339,51 @@ public partial class ReportsViewModel : BaseViewModel
             return InventoryReport.LowStockItems.Cast<T>().ToList();
 
         return null;
+    }
+
+    private async Task<List<T>?> GetReportDataAsync<T>() where T : class
+    {
+        // Invoice export: prefer RecentInvoices, otherwise load from date range
+        if (typeof(T) == typeof(Invoice))
+        {
+            if (RecentInvoices != null && RecentInvoices.Count > 0)
+                return RecentInvoices.Cast<T>().ToList();
+
+            var invoices = await _unitOfWork.Invoices.GetByDateRangeAsync(StartDate, EndDate);
+            if (invoices != null && invoices.Any())
+                return invoices.Cast<T>().ToList();
+
+            return null;
+        }
+
+        // Medicine export (low stock)
+        if (typeof(T) == typeof(Medicine))
+        {
+            if (InventoryReport?.LowStockItems != null && InventoryReport.LowStockItems.Any())
+                return InventoryReport.LowStockItems.Cast<T>().ToList();
+
+            var inv = await _reportService.GetInventoryReportAsync();
+            if (inv.LowStockItems != null && inv.LowStockItems.Any())
+                return inv.LowStockItems.Cast<T>().ToList();
+
+            return null;
+        }
+
+        // TopSellingItem export
+        if (typeof(T) == typeof(TopSellingItem) || typeof(T).Name == nameof(TopSellingItem))
+        {
+            if (SalesReport?.TopSellingItems != null && SalesReport.TopSellingItems.Any())
+                return SalesReport.TopSellingItems.Cast<T>().ToList();
+
+            // Try to get report for selected StartDate, fallback to today
+            var target = StartDate == default ? DateTime.UtcNow : StartDate;
+            var sr = await _reportService.GetDailySalesReportAsync(target);
+            if (sr.TopSellingItems != null && sr.TopSellingItems.Any())
+                return sr.TopSellingItems.Cast<T>().ToList();
+
+            return null;
+        }
+
+        return GetReportData<T>();
     }
 }

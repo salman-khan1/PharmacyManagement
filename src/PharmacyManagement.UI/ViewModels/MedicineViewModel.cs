@@ -3,6 +3,9 @@ using CommunityToolkit.Mvvm.Input;
 using PharmacyManagement.Domain.Interfaces;
 using PharmacyManagement.Domain.Models;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace PharmacyManagement.UI.ViewModels;
 
@@ -38,6 +41,8 @@ public partial class MedicineViewModel : BaseViewModel
         _ = LoadDataAsync();
     }
 
+    private CancellationTokenSource? _searchCts;
+
     private async Task LoadDataAsync()
     {
         try
@@ -63,19 +68,69 @@ public partial class MedicineViewModel : BaseViewModel
     [RelayCommand]
     private async Task SearchAsync()
     {
+        await SearchAsyncInternal(SearchText, CancellationToken.None);
+    }
+
+    partial void OnSearchTextChanged(string value)
+    {
+        _ = Task.Run(async () => await DebouncedSearchAsync(value));
+    }
+
+    private async Task DebouncedSearchAsync(string value)
+    {
+        try
+        {
+            _searchCts?.Cancel();
+            _searchCts = new CancellationTokenSource();
+            var token = _searchCts.Token;
+            await Task.Delay(300, token);
+            await SearchAsyncInternal(value, token);
+        }
+        catch (OperationCanceledException) { }
+        catch { }
+    }
+
+    private async Task SearchAsyncInternal(string searchText, CancellationToken token)
+    {
         try
         {
             IsBusy = true;
 
-            if (string.IsNullOrWhiteSpace(SearchText))
+            if (string.IsNullOrWhiteSpace(searchText))
             {
                 await LoadDataAsync();
                 return;
             }
 
-            var results = await _unitOfWork.Medicines.SearchAsync(SearchText);
-            Medicines = new ObservableCollection<Medicine>(results);
+            // prioritize barcode exact match
+            var barcodeMatch = await _unitOfWork.Medicines.GetByBarcodeAsync(searchText);
+            var results = (await _unitOfWork.Medicines.SearchAsync(searchText)).ToList();
+
+            var lower = searchText.ToLower();
+            var scored = results.Select(m => new
+            {
+                Med = m,
+                Score = (m.Quantity > 0 ? 100 : 0)
+                        + (m.MedicineName?.StartsWith(searchText, StringComparison.OrdinalIgnoreCase) == true ? 50 : 0)
+                        + (m.MedicineName?.ToLower().Contains(lower) == true ? 20 : 0)
+                        + (m.GenericName?.ToLower().Contains(lower) == true ? 10 : 0)
+            })
+            .OrderByDescending(x => x.Score)
+            .ThenBy(x => x.Med.MedicineName)
+            .Select(x => x.Med)
+            .ToList();
+
+            if (barcodeMatch != null)
+            {
+                scored.RemoveAll(m => m.Id == barcodeMatch.Id);
+                scored.Insert(0, barcodeMatch);
+            }
+
+            token.ThrowIfCancellationRequested();
+
+            Medicines = new ObservableCollection<Medicine>(scored);
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             ShowError($"Search error: {ex.Message}");

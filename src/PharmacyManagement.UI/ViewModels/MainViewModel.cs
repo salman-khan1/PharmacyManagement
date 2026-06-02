@@ -20,22 +20,22 @@ public partial class MainViewModel : BaseViewModel
     private BaseViewModel? _selectedViewModel;
 
     [ObservableProperty]
-    private DashboardViewModel _dashboardViewModel;
+    private DashboardViewModel _dashboardVM;
 
     [ObservableProperty]
-    private MedicineViewModel _medicineViewModel;
+    private MedicineViewModel _medicineVM;
 
     [ObservableProperty]
-    private InventoryViewModel _inventoryViewModel;
+    private InventoryViewModel _inventoryVM;
 
     [ObservableProperty]
-    private POSViewModel _posViewModel;
+    private POSViewModel _posVM;
 
     [ObservableProperty]
-    private ReportsViewModel _reportsViewModel;
+    private ReportsViewModel _reportsVM;
 
     [ObservableProperty]
-    private SettingsViewModel _settingsViewModel;
+    private SettingsViewModel _settingsVM;
 
     [ObservableProperty]
     private bool _isLoggedIn = false;
@@ -52,15 +52,15 @@ public partial class MainViewModel : BaseViewModel
         _reportService = reportService ?? throw new ArgumentNullException(nameof(reportService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        DashboardViewModel = dashboardViewModel ?? throw new ArgumentNullException(nameof(dashboardViewModel));
-        MedicineViewModel = medicineViewModel ?? throw new ArgumentNullException(nameof(medicineViewModel));
-        InventoryViewModel = inventoryViewModel ?? throw new ArgumentNullException(nameof(inventoryViewModel));
-        POSViewModel = posViewModel ?? throw new ArgumentNullException(nameof(posViewModel));
-        ReportsViewModel = reportsViewModel ?? throw new ArgumentNullException(nameof(reportsViewModel));
-        SettingsViewModel = settingsViewModel ?? throw new ArgumentNullException(nameof(settingsViewModel));
+        DashboardVM = dashboardViewModel ?? throw new ArgumentNullException(nameof(dashboardViewModel));
+        MedicineVM = medicineViewModel ?? throw new ArgumentNullException(nameof(medicineViewModel));
+        InventoryVM = inventoryViewModel ?? throw new ArgumentNullException(nameof(inventoryViewModel));
+        PosVM = posViewModel ?? throw new ArgumentNullException(nameof(posViewModel));
+        ReportsVM = reportsViewModel ?? throw new ArgumentNullException(nameof(reportsViewModel));
+        SettingsVM = settingsViewModel ?? throw new ArgumentNullException(nameof(settingsViewModel));
 
         Title = "Pharmacy Management System";
-        SelectedViewModel = DashboardViewModel;
+        SelectedViewModel = DashboardVM;
 
         _logger.LogInformation("MainViewModel initialized");
     }
@@ -70,13 +70,13 @@ public partial class MainViewModel : BaseViewModel
     {
         SelectedViewModel = viewName switch
         {
-            "Dashboard" => DashboardViewModel,
-            "Medicines" => MedicineViewModel,
-            "Inventory" => InventoryViewModel,
-            "POS" => POSViewModel,
-            "Reports" => ReportsViewModel,
-            "Settings" => SettingsViewModel,
-            _ => DashboardViewModel
+            "Dashboard" => DashboardVM,
+            "Medicines" => MedicineVM,
+            "Inventory" => InventoryVM,
+            "POS" => PosVM,
+            "Reports" => ReportsVM,
+            "Settings" => SettingsVM,
+            _ => DashboardVM
         };
 
         Title = $"Pharmacy Management - {viewName}";
