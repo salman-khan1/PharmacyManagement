@@ -345,7 +345,10 @@ public partial class ReportsViewModel : BaseViewModel
         await ExportAsync<Invoice>("PDF", "pdf", async data => await _exportService.ExportToPdfAsync(data, "Report"));
     }
 
-    private async Task ExportAsync<T>(string filterName, string extension, Func<List<T>, Task<byte[]>> exportFunc) where T : class
+    private async Task ExportAsync<T>(
+        string filterName,
+        string extension,
+        Func<List<T>, Task<byte[]>> exportFunc) where T : class
     {
         try
         {
@@ -354,33 +357,49 @@ public partial class ReportsViewModel : BaseViewModel
             var saveDialog = new SaveFileDialog
             {
                 Filter = $"{filterName} files (*.{extension})|*.{extension}",
-                FileName = $"Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{extension}"
+                FileName = $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.{extension}"
             };
 
-            if (saveDialog.ShowDialog() != true) return;
+            if (saveDialog.ShowDialog() != true)
+                return;
 
-            List<T>? data = await GetReportDataAsync<T>();
+            var data = await GetReportDataAsync<T>();
+
             if (data == null || data.Count == 0)
             {
-                ShowError("No data to export.");
+                ShowError("No data available to export.");
                 return;
             }
 
             var bytes = await exportFunc(data);
+
+            if (bytes == null || bytes.Length == 0)
+            {
+                ShowError("Export generated an empty file.");
+                return;
+            }
+
             await File.WriteAllBytesAsync(saveDialog.FileName, bytes);
 
-            ShowSuccess($"Report exported to {saveDialog.FileName}");
+            var fileInfo = new FileInfo(saveDialog.FileName);
+
+            ShowSuccess(
+                $"Export completed.\n\n" +
+                $"File: {fileInfo.FullName}\n" +
+                $"Size: {fileInfo.Length:N0} bytes");
         }
         catch (Exception ex)
         {
-            ShowError($"Export error: {ex.Message}");
+            ShowError(
+                $"Export Failed\n\n" +
+                $"Message: {ex.Message}\n\n" +
+                $"Details:\n{ex}");
         }
         finally
         {
             IsBusy = false;
         }
     }
-
     private List<T>? GetReportData<T>() where T : class
     {
         if (typeof(T) == typeof(Invoice) && RecentInvoices.Count > 0)

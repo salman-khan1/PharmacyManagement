@@ -1,21 +1,26 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
 using PharmacyManagement.Domain.Enums;
 using PharmacyManagement.Domain.Interfaces;
 using PharmacyManagement.Domain.Models;
+using PharmacyManagement.Infrastructure.Export;
 using PharmacyManagement.Infrastructure.Services;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 using System.Collections.ObjectModel;
-using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
-using System.IO;
 using System.Diagnostics;
 using System.Drawing.Printing;
-using PharmacyManagement.Infrastructure.Export;
+using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
+using Microsoft.EntityFrameworkCore;
+using Document = QuestPDF.Fluent.Document;
 
 namespace PharmacyManagement.UI.ViewModels;
 
@@ -385,146 +390,151 @@ public class InvoiceItemDto
     {
         try
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("PHARMACY RECEIPT");
-            sb.AppendLine($"Invoice: {invoice.InvoiceNumber}");
-            sb.AppendLine($"Date: {invoice.CreatedAt:yyyy-MM-dd HH:mm}");
-            sb.AppendLine($"Customer: {invoice.CustomerName}");
-            sb.AppendLine(new string('-', 40));
-            sb.AppendLine("Item\tQty\tPrice\tTotal");
-            foreach (var it in invoice.Items)
+            var pdfBytes = GenerateInvoicePdf(invoice);
+
+            var saveDialog = new SaveFileDialog
             {
-                sb.AppendLine($"{it.MedicineName}\t{it.Quantity}\t{it.UnitPrice:C}\t{it.TotalPrice:C}");
-            }
-            sb.AppendLine(new string('-', 40));
-            sb.AppendLine($"Subtotal: {invoice.SubTotal:C}");
-            sb.AppendLine($"Discount: {invoice.DiscountAmount:C}");
-            sb.AppendLine($"Tax: {invoice.TaxAmount:C}");
-            sb.AppendLine($"Total: {invoice.TotalAmount:C}");
+                Filter = "PDF Files (*.pdf)|*.pdf",
+                FileName = $"Invoice_{invoice.InvoiceNumber}.pdf"
+            };
 
-            // If no printers installed, skip native print attempt and go to export fallback
-            if (System.Drawing.Printing.PrinterSettings.InstalledPrinters.Count == 0)
+            if (saveDialog.ShowDialog() != true)
+                return;
+
+            await File.WriteAllBytesAsync(
+                saveDialog.FileName,
+                pdfBytes);
+
+            MessageBox.Show(
+                "Invoice PDF generated successfully.",
+                "Success",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            Process.Start(new ProcessStartInfo
             {
-                MessageBox.Show("No printers installed on this system. The receipt will be saved to a file.", "No Printer", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                // Attempt native print first
-                try
-                {
-                    var flowDoc = new FlowDocument(new Paragraph(new Run(sb.ToString()))) { PagePadding = new Thickness(20) };
-                    var pd = new PrintDialog();
-                    var fd = (IDocumentPaginatorSource)flowDoc;
-                    // If PrintDialog is available and user proceeds, print
-                    if (pd.ShowDialog() == true)
-                    {
-                        pd.PrintDocument(fd.DocumentPaginator, "Invoice Print");
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // If platform doesn't support PrintDialog, inform and continue to fallback
-                    ShowError($"Printing not available: {ex.Message}");
-                }
-            }
-
-            // Try using System.Drawing.Printing.PrintDocument (fallback) — prints to default printer
-            try
-            {
-                var pdDoc = new System.Drawing.Printing.PrintDocument();
-                if (pdDoc.PrinterSettings != null && pdDoc.PrinterSettings.IsValid)
-                {
-                    var textToPrint = sb.ToString();
-                    pdDoc.PrintPage += (s, e) =>
-                    {
-                        var font = new System.Drawing.Font("Consolas", 10);
-                        var brush = System.Drawing.Brushes.Black;
-                        float lineHeight = font.GetHeight(e.Graphics) + 2;
-                        float x = e.MarginBounds.Left;
-                        float y = e.MarginBounds.Top;
-                        using (var sr = new StringReader(textToPrint))
-                        {
-                            string? line;
-                            while ((line = sr.ReadLine()) != null)
-                            {
-                                e.Graphics.DrawString(line, font, brush, x, y);
-                                y += lineHeight;
-                                if (y + lineHeight > e.MarginBounds.Bottom)
-                                {
-                                    e.HasMorePages = true;
-                                    return;
-                                }
-                            }
-                        }
-                        e.HasMorePages = false;
-                    };
-                    // Print (may throw if printer unavailable)
-                    pdDoc.Print();
-                    return;
-                }
-            }
-            catch
-            {
-                // continue to file export fallback
-            }
-
-            // Export fallback: write textual PDF-like file (ExportService produces bytes)
-            try
-            {
-                // Prepare typed DTO list so exporter can reflect properties
-                var itemsList = invoice.Items.Select(i => new InvoiceItemDto
-                {
-                    Medicine = i.MedicineName,
-                    Quantity = i.Quantity,
-                    UnitPrice = i.UnitPrice,
-                    Total = i.TotalPrice
-                }).ToList();
-
-                var bytes = await _exportService.ExportToPdfAsync(itemsList, "Invoice");
-
-                // If no printers installed, auto-save to Receipts folder
-                if (System.Drawing.Printing.PrinterSettings.InstalledPrinters.Count == 0)
-                {
-                    var receiptsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Receipts");
-                    Directory.CreateDirectory(receiptsDir);
-                    var path = Path.Combine(receiptsDir, $"Invoice_{invoice.InvoiceNumber}.pdf");
-                    await File.WriteAllBytesAsync(path, bytes);
-                    MessageBox.Show($"No printers found. Invoice saved to {path}", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-                    }
-                    catch { }
-
-                    return;
-                }
-
-                // Otherwise ask user where to save
-                var dlg = new Microsoft.Win32.SaveFileDialog
-                {
-                    Filter = "PDF files (*.pdf)|*.pdf",
-                    FileName = $"Invoice_{invoice.InvoiceNumber}.pdf"
-                };
-                if (dlg.ShowDialog() == true)
-                {
-                    await File.WriteAllBytesAsync(dlg.FileName, bytes);
-                    MessageBox.Show($"Invoice saved to {dlg.FileName}", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Print/Export error: {ex.Message}");
-            }
+                FileName = saveDialog.FileName,
+                UseShellExecute = true
+            });
         }
         catch (Exception ex)
         {
-            ShowError($"Print error: {ex.Message}");
+            ShowError($"PDF generation failed: {ex.Message}");
         }
     }
 
-    private void CalculateTotals()
+
+
+public byte[] GenerateInvoicePdf(Invoice invoice)
+{
+    QuestPDF.Settings.License = LicenseType.Community;
+
+    return QuestPDF.Fluent.Document.Create(container =>
+    {
+        container.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.Margin(20);
+
+            // ================= HEADER =================
+            page.Header().Column(header =>
+            {
+                header.Item().AlignCenter().Text("PHARMACY MANAGEMENT SYSTEM")
+                    .FontSize(20).Bold();
+
+                header.Item().AlignCenter().Text("Retail Pharmacy Invoice")
+                    .FontSize(12);
+
+                header.Item().AlignCenter().Text("----------------------------------------");
+
+                header.Item().Row(row =>
+                {
+                    row.RelativeItem().Text($"Invoice #: {invoice.InvoiceNumber}");
+                    row.RelativeItem().AlignRight().Text(
+                        $"Date: {invoice.CreatedAt:dd-MMM-yyyy HH:mm}");
+                });
+
+                header.Item().Text($"Customer: {invoice.CustomerName}");
+
+                header.Item().PaddingBottom(10);
+            });
+
+            // ================= CONTENT =================
+            page.Content().Column(content =>
+            {
+                content.Spacing(8);
+
+                // TABLE
+                content.Item().Table(table =>
+                {
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.RelativeColumn(4); // Medicine
+                        columns.RelativeColumn(1); // Qty
+                        columns.RelativeColumn(2); // Unit Price
+                        columns.RelativeColumn(2); // Total
+                    });
+
+                    // HEADER
+                    table.Header(header =>
+                    {
+                        header.Cell().BorderBottom(1).Padding(5).Text("Medicine").Bold();
+                        header.Cell().BorderBottom(1).Padding(5).Text("Qty").Bold();
+                        header.Cell().BorderBottom(1).Padding(5).Text("Price").Bold();
+                        header.Cell().BorderBottom(1).Padding(5).Text("Total").Bold();
+                    });
+
+                    // ROWS
+                    foreach (var item in invoice.Items)
+                    {
+                        table.Cell().Padding(5).Text(item.MedicineName);
+                        table.Cell().Padding(5).Text(item.Quantity.ToString());
+                        table.Cell().Padding(5).Text(item.UnitPrice.ToString("N2"));
+                        table.Cell().Padding(5).Text(item.TotalPrice.ToString("N2"));
+                    }
+                });
+
+                content.Item().PaddingTop(15);
+
+                // ================= TOTAL SECTION =================
+                content.Item().AlignRight().Column(total =>
+                {
+                    total.Item().Text($"Subtotal : {invoice.SubTotal:N2}");
+                    total.Item().Text($"Discount : {invoice.DiscountAmount:N2}");
+                    total.Item().Text($"Tax      : {invoice.TaxAmount:N2}");
+
+                    total.Item()
+                        .Text($"TOTAL     : {invoice.TotalAmount:N2}")
+                        .Bold()
+                        .FontSize(14);
+                });
+
+                content.Item().PaddingTop(20);
+
+                // ================= FOOTER NOTE =================
+                content.Item().Text("Important Notes:")
+                    .Bold();
+
+                content.Item().Text("• Medicines once sold are not returnable.");
+                content.Item().Text("• Please check expiry before leaving pharmacy.");
+                content.Item().Text("• Keep invoice for warranty/return claims.");
+
+                content.Item().PaddingTop(10);
+
+                content.Item().AlignCenter()
+                    .Text("Thank you for visiting our pharmacy!")
+                    .Bold();
+            });
+
+            // ================= FOOTER =================
+            page.Footer().AlignCenter()
+                .Text("Generated by Pharmacy Management System");
+        });
+
+    }).GeneratePdf();
+}
+
+private void CalculateTotals()
     {
         SubTotal = CartItems.Sum(c => c.Total);
 
