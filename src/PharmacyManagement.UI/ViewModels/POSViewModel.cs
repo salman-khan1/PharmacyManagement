@@ -315,8 +315,16 @@ public class InvoiceItemDto
             IsBusy = true;
 
             var items = CartItems.Select(c => (c.MedicineId, c.Quantity, 0m as decimal?)).ToList();
+            // Normalize discount rate same way SalesService expects
+            decimal normalizedDiscountRate = 0;
+            if (DiscountRate > 0)
+            {
+                normalizedDiscountRate = DiscountRate > 1 ? DiscountRate / 100m : DiscountRate;
+                if (normalizedDiscountRate > 1) normalizedDiscountRate = 1m;
+            }
+
             var invoice = await _salesService.CreateInvoiceAsync(
-                CustomerName, CustomerPhone, SelectedPaymentMethod, items, DiscountRate);
+                CustomerName, CustomerPhone, SelectedPaymentMethod, items, normalizedDiscountRate);
 
             ShowSuccess($"Sale completed! Invoice: {invoice.InvoiceNumber}\nTotal: {invoice.TotalAmount:C}");
 

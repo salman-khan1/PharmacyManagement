@@ -60,6 +60,57 @@ public partial class ReportsViewModel : BaseViewModel
         set => SetProperty(ref _hasSalesReport, value);
     }
 
+    [RelayCommand]
+    private async Task DeleteInvoiceAsync(Invoice invoice)
+    {
+        try
+        {
+            if (invoice == null) return;
+
+            var result = System.Windows.MessageBox.Show(
+                $"Are you sure you want to delete invoice {invoice.InvoiceNumber}?",
+                "Confirm Delete", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+
+            if (result != System.Windows.MessageBoxResult.Yes) return;
+
+            IsBusy = true;
+            invoice.IsDeleted = true;
+            invoice.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Invoices.UpdateAsync(invoice);
+            await _unitOfWork.SaveChangesAsync();
+
+            // remove from recent invoices collection
+            RecentInvoices?.Remove(invoice);
+
+            // Recalculate SalesReport preview if present
+            if (RecentInvoices != null && RecentInvoices.Any())
+            {
+                SalesReport = new SalesReport
+                {
+                    ReportDate = StartDate,
+                    TotalInvoices = RecentInvoices.Count,
+                    TotalSales = RecentInvoices.Sum(i => i.TotalAmount),
+                    TotalTax = RecentInvoices.Sum(i => i.TaxAmount),
+                    TotalDiscount = RecentInvoices.Sum(i => i.DiscountAmount),
+                    TopSellingItems = RecentInvoices.SelectMany(i => i.Items)
+                        .GroupBy(it => it.MedicineName)
+                        .Select(g => new TopSellingItem { MedicineName = g.Key, QuantitySold = g.Sum(i => i.Quantity), TotalRevenue = g.Sum(i => i.TotalPrice) })
+                        .OrderByDescending(t => t.QuantitySold).Take(10).ToList()
+                };
+            }
+
+            ShowSuccess("Invoice deleted successfully.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error deleting invoice: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public bool HasInventoryReport
     {
         get => _hasInventoryReport;

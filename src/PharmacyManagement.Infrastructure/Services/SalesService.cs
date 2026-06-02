@@ -31,6 +31,18 @@ public class SalesService : ISalesService
         if (items == null || items.Count == 0)
             throw new ArgumentException("At least one item is required", nameof(items));
 
+        // Normalize discount rate: allow user to pass percentage (e.g. 10 for 10%) or decimal (0.10)
+        decimal normalizedDiscountRate = 0;
+        if (discountRate.HasValue)
+        {
+            var dr = discountRate.Value;
+            if (dr <= 0) normalizedDiscountRate = 0m;
+            else if (dr > 1) normalizedDiscountRate = dr / 100m;
+            else normalizedDiscountRate = dr;
+            // clamp to 100%
+            if (normalizedDiscountRate > 1) normalizedDiscountRate = 1m;
+        }
+
         var invoice = new Invoice
         {
             InvoiceNumber = GenerateInvoiceNumber(),
@@ -39,7 +51,7 @@ public class SalesService : ISalesService
             PaymentMethod = paymentMethod,
             Status = InvoiceStatus.Paid,
             TaxRate = 0.05m,
-            DiscountRate = discountRate ?? 0,
+            DiscountRate = normalizedDiscountRate,
             CreatedAt = DateTime.UtcNow
         };
 

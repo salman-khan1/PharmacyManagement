@@ -214,6 +214,43 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
     </Style>
 
+    <!-- ComboBoxItem Style - ensure dropdown items match dark theme (not white) -->
+    <!-- ComboBoxItem Style -->
+    <Style x:Key="AppComboBoxItemStyle"
+           TargetType="ComboBoxItem">
+        <Setter Property="Background"
+                Value="{StaticResource CardBackgroundBrush}"/>
+        <Setter Property="Foreground"
+                Value="{StaticResource ForegroundBrush}"/>
+        <Setter Property="Padding"
+                Value="8,6"/>
+        <Setter Property="HorizontalContentAlignment"
+                Value="Left"/>
+        <Setter Property="VerticalContentAlignment"
+                Value="Center"/>
+
+        <Style.Triggers>
+            <Trigger Property="IsHighlighted"
+                     Value="True">
+                <Setter Property="Background"
+                        Value="{StaticResource PrimaryDarkBrush}"/>
+                <Setter Property="Foreground"
+                        Value="White"/>
+            </Trigger>
+
+            <Trigger Property="IsSelected"
+                     Value="True">
+                <Setter Property="Background"
+                        Value="{StaticResource PrimaryBrush}"/>
+                <Setter Property="Foreground"
+                        Value="White"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Keep the implicit style as well -->
+    <Style TargetType="ComboBoxItem"
+           BasedOn="{StaticResource AppComboBoxItemStyle}"/>
     <!-- ScrollBar Style -->
     <Style TargetType="ScrollBar">
         <Setter Property="Background" Value="Transparent"/>

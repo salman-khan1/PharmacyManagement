@@ -79,6 +79,8 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Orientation="Horizontal" Grid.Column="0">
+                                <TextBlock Text="Note: Print preview is not supported. Use Export PDF or system print." 
+                                           Foreground="{DynamicResource SecondaryForegroundBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
                                 <Button Content="Export Excel" Style="{DynamicResource SmallSuccessButtonStyle}" Command="{Binding ExportToExcelCommand}" Height="30" Width="120" Margin="0,0,8,0"/>
                                 <Button Content="Export CSV" Style="{DynamicResource SmallPrimaryButtonStyle}" Command="{Binding ExportToCsvCommand}" Height="30" Width="120" Margin="0,0,8,0"/>
                                 <Button Content="Export PDF" Style="{DynamicResource SmallDangerButtonStyle}" Command="{Binding ExportToPdfCommand}" Height="30" Width="120"/>
@@ -98,6 +100,15 @@
                                     <DataGridTextColumn Header="Date" Binding="{Binding CreatedAt, StringFormat=yyyy-MM-dd}" Width="120"/>
                                     <DataGridTextColumn Header="Customer" Binding="{Binding CustomerName}" Width="*"/>
                                     <DataGridTextColumn Header="Total" Binding="{Binding TotalAmount, StringFormat='{}{0:C}'}" Width="120"/>
+                                        <DataGridTemplateColumn Header="Actions" Width="100">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="Delete" Style="{DynamicResource SmallDangerButtonStyle}"
+                                                            Command="{Binding DataContext.DeleteInvoiceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}" Height="26" Width="80"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Border>
